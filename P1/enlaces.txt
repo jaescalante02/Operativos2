@@ -6,6 +6,7 @@ http://erlang.org/doc/reference_manual/expressions.html
 
 http://trigonakis.com/blog/2011/05/26/introduction-to-erlang-message-passing/
 
+http://www.erlang.org/doc/reference_manual/processes.html
 
 -------------------------------------------------------------------------------
 Buddy System
