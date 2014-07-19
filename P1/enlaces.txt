@@ -1,0 +1,16 @@
+http://www.erlang.org/doc/getting_started/conc_prog.html
+
+http://stackoverflow.com/questions/11857077/erlang-reader-writer-program
+
+http://erlang.org/doc/reference_manual/expressions.html
+
+http://trigonakis.com/blog/2011/05/26/introduction-to-erlang-message-passing/
+
+
+-------------------------------------------------------------------------------
+Buddy System
+
+pagina 766 del pdf tanenbaun sist operativos
+
+pagina 405 del pdf stallings
+
