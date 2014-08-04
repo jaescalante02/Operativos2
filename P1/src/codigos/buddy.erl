@@ -1,7 +1,8 @@
 -module(buddy).
 -export([buscar_tam/3,insertar_elem/2,insertar/4,insert/3,eliminar/2,
 		 esta_proc/2,esta_en_lista/2,esta_cargada/3,tam_l/1,ext/2,
-		 modificar_lista/3,lista_de_proc/2,fragmentacion_interna/1,crear_arbol/1]).
+		 modificar_lista/3,lista_de_proc/2,fragmentacion_interna/1,crear_arbol/1,
+		 cambiar_priori/3,quitar_elem/2]).
 
 %% aqui las tuplas representan un Arbol de la forma 
 %%{tamanio,{id,contenido(que es una lista)},hijo_izquierdo,hijo_derecho,esta_partido}
@@ -120,6 +121,35 @@ esta_cargada(Arb,Id,N) ->
 	D = element(4,Arb),
 	(B/=nil andalso element(1,B)==Id andalso esta_en_lista(element(2,B),N)) 
 	orelse esta_cargada(C,Id,N) orelse esta_cargada(D,Id,N).
+
+
+
+%Funcion que quita cierto elemento de una lista
+quitar_elem([],_)->
+	[];
+quitar_elem([N|Y],N)->
+	Y;
+quitar_elem([X|Y],N)->
+	[X]++quitar_elem(Y,N).
+
+%funcion que coloca un elemento (pagina) de una lista del procedo de id Id,
+%de ultimo en la lista
+
+cambiar_priori(nil,_,_) ->
+	nil;
+
+cambiar_priori(Arb,Id,N) ->
+	A = element(1,Arb),
+	B = element(2,Arb),
+	C = element(3,Arb),
+	D = element(4,Arb),
+	E = element(5,Arb),
+	if
+		B/=nil andalso element(1,B)==Id ->
+			{A,{Id,[N]++quitar_elem(element(2,B),N)},C,D,E};	
+		true ->
+			{A,B,cambiar_priori(C,Id,N),cambiar_priori(D,Id,N),E}
+	end.
 
 
 %Da el tamanio de una lista

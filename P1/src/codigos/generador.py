@@ -14,7 +14,7 @@ for i in range(0,casos):
 	acs  = random.randint(1,20)
 	for k in range(0,acs):
 		tmp = random.randint(0,size-1)
-		print "\t\t\t<page>",tmp,"<page>"
+		print "\t\t\t<page>",tmp,"</page>"
 	print "\t\t</item>"
 	print "\t</process>"
 
