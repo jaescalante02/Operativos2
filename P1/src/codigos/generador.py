@@ -5,7 +5,7 @@ casos = int(raw_input())
 print "<processes>"
 for i in range(0,casos):
 	print "\t<process>"
-	print "\t\t<id>",i,"</id>"
+	print "\t\t<id>","p"+str(i),"</id>"
 	size = random.randint(1,45)
 	arrival = random.randint(500,10000)
 	print "\t\t<item>"
