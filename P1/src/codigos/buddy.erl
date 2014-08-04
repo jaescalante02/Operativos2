@@ -1,6 +1,7 @@
 -module(buddy).
 -export([buscar_tam/3,insertar_elem/2,insertar/4,insert/3,eliminar/2,
-		 esta_proc/2,esta_en_lista/2,esta_cargada/3]).
+		 esta_proc/2,esta_en_lista/2,esta_cargada/3,tam_l/1,ext/2,
+		 modificar_lista/3]).
 
 %% aqui las tuplas representan un Arbol de la forma 
 %%{tamanio,{id,contenido(que es una lista)},hijo_izquierdo,hijo_derecho,esta_partido}
@@ -121,3 +122,42 @@ esta_cargada(Arb,Id,N) ->
 	orelse esta_cargada(C,Id,N) orelse esta_cargada(D,Id,N).
 
 
+%Da el tamanio de una lista
+tam_l([]) ->
+	0;
+tam_l([_|Y]) ->
+	1+tam_l(Y).
+
+%Extraer los primeros K o menos elementos de una lista
+ext([],_) ->
+	[];
+ext([X|Y],N) ->
+	if 
+		N=<0 ->
+			[];
+		true->
+			[X]++ext(Y,N-1)
+	end.
+
+
+
+%%Funcion que inserta un conjunto de elementos en una lista 
+%%lista que simula las paginas cargadas de un proceso
+%Id es el id del proceso a buscar
+%L es la lista cuyos elementos se quieren agregar
+
+modificar_lista(nil,_,_) ->
+	nil;
+
+modificar_lista(Arb,Id,L) ->
+	A = element(1,Arb),
+	B = element(2,Arb),
+	C = element(3,Arb),
+	D = element(4,Arb),
+	E = element(5,Arb),
+	if
+		B/=nil andalso element(1,B)==Id->
+			{A,{Id,L++ext(element(2,B),tam_l(element(2,B))-tam_l(L))},C,D,E};
+		true ->
+			{A,B,modificar_lista(C,Id,L),modificar_lista(D,Id,L),E}
+	end.
