@@ -1,5 +1,6 @@
 -module(buddy).
--export([buscar_tam/3,insertar_elem/2,insertar/4,insert/3,eliminar/2]).
+-export([buscar_tam/3,insertar_elem/2,insertar/4,insert/3,eliminar/2,
+		 esta_proc/2,esta_en_lista/2,esta_cargada/3]).
 
 %% aqui las tuplas representan un Arbol de la forma 
 %%{tamanio,{id,contenido(que es una lista)},hijo_izquierdo,hijo_derecho,esta_partido}
@@ -85,5 +86,38 @@ eliminar(Arb,Cont) ->
 			end
 	end.
 
+
+
+%Indica si hay un proceso con id Id en el arbol
+esta_proc(nil,_) ->
+	false;
+
+esta_proc(Arb,Id) ->
+	B = element(2,Arb),
+	C = element(3,Arb),
+	D = element(4,Arb),
+	(B/=nil andalso element(1,B)==Id) or (C/=nil andalso esta_proc(C,Id)) or
+	(D/=nil andalso esta_proc(D,Id)).
+
+
+%verifica si un elemento esta en lista
+esta_en_lista([],_) ->
+	false;
+esta_en_lista([X|Y],El) ->
+	X==El orelse esta_en_lista(Y,El).
+
+
+%Indica si una pagina del proceso de id Id 
+%tiene cargada la pagina del proceso numero N
+
+esta_cargada(nil,_,_) ->
+	false;
+
+esta_cargada(Arb,Id,N) ->
+	B = element(2,Arb),
+	C = element(3,Arb),
+	D = element(4,Arb),
+	(B/=nil andalso element(1,B)==Id andalso esta_en_lista(element(2,B),N)) 
+	orelse esta_cargada(C,Id,N) orelse esta_cargada(D,Id,N).
 
 
