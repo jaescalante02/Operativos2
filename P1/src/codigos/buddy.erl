@@ -2,7 +2,7 @@
 -export([buscar_tam/3,insertar_elem/2,insertar/4,insert/3,eliminar/2]).
 
 %% aqui las tuplas representan un Arbol de la forma 
-%%{tamanio,contenido,hijo_izquierdo,hijo_derecho,esta_partido}
+%%{tamanio,{id,contenido(que es una lista)},hijo_izquierdo,hijo_derecho,esta_partido}
 
 
 buscar_tam(nil,Tam,T) ->
@@ -21,7 +21,7 @@ insertar(nil,_,Cont,64) ->
 insertar(nil,Tam,Cont,T) ->
 	if
 		T div 2 >= Tam->
-			{T,nil,insertar(nil,bla,Cont,T div 2),nil,true};
+			{T,nil,insertar(nil,Tam,Cont,T div 2),nil,true};
 		true ->
 			{T,Cont,nil,nil,false}
 	end;
@@ -48,6 +48,9 @@ insertar(Arb,Tam,Cont, T) ->
 		true -> io:format("Error~n")
 	end.
 
+
+%%esta es la funcion real de insercion, las demas son auxiliares de esta.
+%% se debe llamar con los parametros Arbol, tamanio_buscado, Contenido_a_insertar
 insert(A,B,C) ->
 	insertar(A,B,C,element(1,A)).
 
@@ -59,8 +62,9 @@ eliminar(Arb,Cont) ->
 	B = element(2,Arb),
 	C = element(3,Arb),
 	D = element(4,Arb),
+
 	if
-		B==Cont -> 
+		B/= nil andalso Cont==element(1,B) -> 
 			nil;
 		true ->	
 			X = eliminar(C,Cont),
@@ -74,8 +78,12 @@ eliminar(Arb,Cont) ->
 					{A,nil,nil,nil,false};
 				Y==nil andalso X/=nil andalso element(2,X)==nil andalso element(5,X)==false->
 					{A,nil,nil,nil,false};
+				X/=nil orelse Y/=nil->
+					{A,B,X,Y,true};
 				true->
 					{A,B,X,Y,false}
 			end
 	end.
+
+
 
