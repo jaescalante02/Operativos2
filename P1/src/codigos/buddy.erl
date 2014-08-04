@@ -1,7 +1,7 @@
 -module(buddy).
 -export([buscar_tam/3,insertar_elem/2,insertar/4,insert/3,eliminar/2,
 		 esta_proc/2,esta_en_lista/2,esta_cargada/3,tam_l/1,ext/2,
-		 modificar_lista/3]).
+		 modificar_lista/3,lista_de_proc/2]).
 
 %% aqui las tuplas representan un Arbol de la forma 
 %%{tamanio,{id,contenido(que es una lista)},hijo_izquierdo,hijo_derecho,esta_partido}
@@ -109,7 +109,7 @@ esta_en_lista([X|Y],El) ->
 
 
 %Indica si una pagina del proceso de id Id 
-%tiene cargada la pagina del proceso numero N
+%tiene cargada la pagina numero N del proceso
 
 esta_cargada(nil,_,_) ->
 	false;
@@ -161,3 +161,32 @@ modificar_lista(Arb,Id,L) ->
 		true ->
 			{A,B,modificar_lista(C,Id,L),modificar_lista(D,Id,L),E}
 	end.
+
+%Funcion que retorna la lista del proceso con id Id del
+%Arbol arb
+lista_de_proc(nil,_) ->
+	nil;
+
+lista_de_proc(Arb,Id) ->
+	B = element(2,Arb),
+	C = element(3,Arb),
+	D = element(4,Arb),
+	if 
+		B/=nil andalso element(1,B)==Id ->
+			element(2,B);
+		true->
+			L = lista_de_proc(C,Id),
+			R = lista_de_proc(D,Id),
+			if
+				L /= nil->
+					L;
+				R /= nil->
+					R;
+				true->
+					nil
+		end
+	end.
+	
+
+
+
