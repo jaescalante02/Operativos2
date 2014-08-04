@@ -1,7 +1,7 @@
 -module(buddy).
 -export([buscar_tam/3,insertar_elem/2,insertar/4,insert/3,eliminar/2,
 		 esta_proc/2,esta_en_lista/2,esta_cargada/3,tam_l/1,ext/2,
-		 modificar_lista/3,lista_de_proc/2]).
+		 modificar_lista/3,lista_de_proc/2,fragmentacion_interna/1,crear_arbol/1]).
 
 %% aqui las tuplas representan un Arbol de la forma 
 %%{tamanio,{id,contenido(que es una lista)},hijo_izquierdo,hijo_derecho,esta_partido}
@@ -188,5 +188,19 @@ lista_de_proc(Arb,Id) ->
 	end.
 	
 
+fragmentacion_interna(nil) ->
+	0;
+fragmentacion_interna(Arb) ->
+	A = element(1,Arb),
+	B = element(2,Arb),
+	C = element(3,Arb),
+	D = element(4,Arb),
+	if 
+		B /= nil->
+			A-tam_l(element(2,B));
+		true->
+			fragmentacion_interna(C)+fragmentacion_interna(D)
+	end.
 
-
+crear_arbol(N) ->
+	{N,nil,nil,nil,false}.
