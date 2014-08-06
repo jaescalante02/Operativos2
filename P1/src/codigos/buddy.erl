@@ -18,8 +18,8 @@ buscar_tam(Arb,Tam,T) ->
 insertar_elem(Arb,Cont) ->
 	{element(1,Arb),Cont,nil,nil,false}.
 
-insertar(nil,_,Cont,64) ->
-	{64,Cont,nil, nil, false};
+insertar(nil,_,Cont,1) ->
+	{1,Cont,nil, nil, false};
 
 insertar(nil,Tam,Cont,T) ->
 	if
