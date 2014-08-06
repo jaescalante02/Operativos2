@@ -8,6 +8,8 @@ http://trigonakis.com/blog/2011/05/26/introduction-to-erlang-message-passing/
 
 http://www.erlang.org/doc/reference_manual/processes.html
 
+http://stackoverflow.com/questions/2708033/technically-why-are-processes-in-erlang-more-efficient-than-os-threads
+
 -------------------------------------------------------------------------------
 Buddy System
 
