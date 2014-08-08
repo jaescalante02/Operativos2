@@ -4,7 +4,7 @@
                 <id>id1</id>
                 <item>
                   <arrival>1000</arrival>
-                  <size>1</size>
+                  <size>10</size>
                   <page>1</page>
                   <page>2</page>
                   <page>3</page>
@@ -41,7 +41,7 @@
                 <id>id2</id>
                 <item>
                   <arrival>1000</arrival>
-                  <size>1</size>
+                  <size>10</size>
                   <page>1</page>
                   <page>2</page>
                   <page>3</page>
@@ -78,7 +78,7 @@
                 <id>id3</id>
                 <item>
                   <arrival>1000</arrival>
-                  <size>2</size>
+                  <size>20</size>
                   <page>6</page>
                   <page>7</page>
                   <page>8</page>

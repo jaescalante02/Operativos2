@@ -9,7 +9,7 @@
 
 
 buscar_tam(nil,Tam,T) ->
-	T>=Tam;
+	false;
 
 buscar_tam(Arb,Tam,T) ->
 	Y=((element(1,Arb)>=Tam) and (nil==element(2,Arb)) and (not element(5,Arb))) orelse ((buscar_tam(element(4,Arb),Tam, T div 2) orelse buscar_tam(element(3,Arb),Tam,T div 2)) andalso element(5,Arb) andalso nil==element(2,Arb)),
@@ -48,7 +48,8 @@ insertar(Arb,Tam,Cont, T) ->
 		B==nil andalso not E->
 			insertar_elem(Arb,Cont)
 		;
-		true -> io:format("Error~n")
+		true ->
+            fail
 	end.
 
 
@@ -68,7 +69,7 @@ eliminar(Arb,Cont) ->
 
 	if
 		B/= nil andalso Cont==element(1,B) -> 
-			nil;
+			{A,nil,C,D,false};
 		true ->	
 			X = eliminar(C,Cont),
 			Y = eliminar(D,Cont),
@@ -106,7 +107,7 @@ esta_proc(Arb,Id) ->
 esta_en_lista([],_) ->
 	false;
 esta_en_lista([X|Y],El) ->
-	X==El orelse esta_en_lista(Y,El).
+	(X==El) orelse esta_en_lista(Y,El).
 
 
 %Indica si una pagina del proceso de id Id 
