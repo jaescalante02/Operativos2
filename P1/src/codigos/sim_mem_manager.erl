@@ -13,17 +13,7 @@ next_power_2_aux(Num, Acm)->
 
 
 insert_process(Manager, Id, 1, Pags)->
-  %  io:format("Init1~p ~n~n~p ~p~n",[Manager,Id,Pags]),
-    New = buddy:insert(Manager, 1, {Id, hd(Pags)}),
-    
-    if
-      (New==Manager)->
-          %mensaje  
-          Resp=Manager;
-      (true)-> Resp=New
-    end,
-    %io:format("1resp~n~p~n", [Resp]),                     
-    Resp;    
+    buddy:insert(Manager, 1, {Id, [hd(Pags)]});    
 
 insert_process(Manager, Id, SizeP, Pags)->
     if
@@ -35,7 +25,7 @@ insert_process(Manager, Id, SizeP, Pags)->
     New = buddy:insert(Manager, SizeP, {Id, NewPags}),
     %io:format("Newresp~n~p~n", [New]), 
     if
-      (New==Manager)->  Resp=insert_process(Manager, Id, next_power_2(SizeP) div 2, Pags);
+      (New==fail)->  Resp=insert_process(Manager, Id, next_power_2(SizeP) div 2, Pags);
       (true)-> Resp=New %io:format("3resp~n~p~n", [Resp])                         
     end,
     %io:format("2resp~n~p~n", [Resp]),                         
@@ -60,7 +50,8 @@ loop_mem_manager(Manager, Stats)->
             loop_mem_manager(Manager, NewStats);             
         (true)->
             kernel ! {asignacion_exitosa, {Id, Size, Vpags}},
-            NewStats=sim_stat:sumar_all(Stats,[{peticiones, 1}]),                              
+            NewStats=sim_stat:sumar_all(Stats,[{peticiones, 1}]),  
+            %io:format(" ~n ~p ~n ",[NewManager]),                                        
             loop_mem_manager(NewManager, NewStats)  
         end;
 
@@ -71,7 +62,8 @@ loop_mem_manager(Manager, Stats)->
         loop_mem_manager(NewManager, NewStats);         
     {change_page, {Id, Pag, CPU} } ->
         %lru con mensaje para avisar page_found
-        NewManager = buddy:modificar_lista(Manager, Id, Pag),
+        NewManager = buddy:modificar_lista(Manager, Id, [Pag]),
+        %io:format(" ~n ~p ~n ",[NewManager]),                                                
         kernel ! {page_found, {Id, Pag, CPU}},
         NewStats=sim_stat:sumar_all(Stats,[{peticiones, 1}]),
         loop_mem_manager(NewManager, NewStats);                            
@@ -83,6 +75,7 @@ loop_mem_manager(Manager, Stats)->
           (Cargada==true)-> 
             kernel ! {page_found, {Id, Pag, CPU}},
             NewManager=buddy:cambiar_priori(Manager,Id, Pag),
+            %io:format(" ~n ~p ~n ",[NewManager]),                                                            
             NewStats=sim_stat:sumar_all(Stats,[{peticiones, 1}]),
             loop_mem_manager(NewManager, NewStats);        
           (true)-> 
