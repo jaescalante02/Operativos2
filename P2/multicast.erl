@@ -1,5 +1,14 @@
 -module(multicast).
--export([main/1,main/0,enviar_multicast/2]).
+-export([main/1,main/0,enviar_multicast/2,fuera_muertos/2]).
+
+
+fuera_muertos(L,[])->
+	L;
+
+fuera_muertos(Lista,[Muerto|Murieron]) ->
+	NewL = lists:delete(Muerto,Lista),
+	fuera_muertos(NewL,Murieron).
+
 
 revisar([]) ->
 	[];
@@ -8,7 +17,7 @@ revisar([[Process,Node,Pid | Cont]|Resto])->
 %	Cond = 	rpc:call(Node,erlang,whereis,[Process]),  
 	%io:format("Cond ~p~n",[Cond]),
 	if
-		Cond ->
+		not (Cond) ->
 			[[Process,Node,Pid | Cont]] ++ revisar(Resto);
 		true ->
 			revisar(Resto)
@@ -31,19 +40,25 @@ main(Lista) ->
 		%Servidor es una lista de [Proceso,Nodo]
 		{addme,Servidor} ->
 			NewLista = Lista ++ [Servidor],
-		 	enviar_multicast({nueva_lista,NewLista},NewLista);
+			[_,Nodo,_,_] = Servidor,
+			{servidor,Nodo} ! {nueva_lista,NewLista},
+		 	enviar_multicast({agreguen_servidor,Servidor},Lista);
 
 		{nueva_lista,NewLista}->
 			ok;
 
+		{cambio_contenido,{Proc,Nodo,NewCont}}->
+			NewLista = servidor:cambiar_contenido(Proc,Nodo,NewCont,Lista);
+
 		revisar_vivos ->
-			NewLista = revisar(Lista),
-			Cond = NewLista/=Lista,
+			Tmp = revisar(Lista),
+			Cond = Tmp/=[],
 			if
 				Cond ->
-					enviar_multicast({nueva_lista,NewLista},NewLista);
+					NewLista = fuera_muertos(Lista,Tmp),
+					enviar_multicast({muertos,Tmp},NewLista);
 				true ->
-					ok
+					NewLista=Lista
 			end;
 
 		{unicasts,To,Msg} ->

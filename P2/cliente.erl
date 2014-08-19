@@ -45,7 +45,7 @@ menu(Server) ->
 			io:format("Introduzca el nombre del archivo que desea realizar la operacion:~n"),
 			Arch = io:get_line(""),
 			io:format("Opcion 3 ~p~n",[Arch]),
-			{servidor,Server} ! {agregar_archivo,{Arch,now()}},
+			{servidor,Server} ! {peticion_agregar_archivo,{Arch,now()}},
 			receive
 				{new,NS} ->
 					NewServer = NS
@@ -82,6 +82,7 @@ main([Server|_])->
 		true ->
 			io:format("")
 	end,
+	{servidor,Server} ! {peticion_agregar_cliente,{self(),node()}},
 	%%Logro conectar con el servidor y lanzo el menu para el usuario
 	menu(Server).
 
