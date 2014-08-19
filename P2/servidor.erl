@@ -54,9 +54,9 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewClientes = Clientes,
 			NewContenido = Contenido;
 
-		{nueva_lista_cl,List}->
+		{nueva_lista_cl,Clients}->
 			NewLista = Lista,
-			NewClientes = List,
+			NewClientes = Clients,
 			NewContenido = Contenido;
 
 
@@ -126,8 +126,8 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewContenido = Contenido,
 			NewLista = Lista++[S],
 			[_,Nodo,_,_] = S,
-			{servidor,Nodo} ! {nueva_lista,NewLista},
-			{servidor,Nodo} ! {nueva_lista_cl,Clientes};
+			{mcast,Mcast} ! {unicasts,{servidor,Nodo},{nueva_lista,NewLista}},
+			{mcast,Mcast} ! {unicasts,{servidor,Nodo},{nueva_lista_cl,Clientes}};
 
 			
 
@@ -153,7 +153,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewLista = multicast:fuera_muertos(Lista,ListaM);
 
 		Otro->
-			io:format("~p~n",[Otro]),
+			io:format("Cayooooo aquiiiii~n",[Otro]),
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido

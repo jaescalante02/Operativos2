@@ -9,7 +9,7 @@ menu(Server) ->
 	io:format("  3.- Commit~n"),
 	io:format("  4.- Salir~n"),
 	Opcion = io:get_line(""),
-	io:format("~p~n",[Opcion]),
+	%io:format("~p~n",[Opcion]),
 	%Espera a ver si hubo un cambio de servidor principal durante medio segundo
 	if
 		Opcion=="1\n" ->
