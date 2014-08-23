@@ -24,9 +24,34 @@ enviar_msg_fifo([Head|Resto],Msg,K,Mcast) ->
 	
 
 
+grandulon([],Minimo) ->
+	element(2,Minimo);
+
+grandulon([[_,Nodo,Pid,_]|Resto],nil) ->
+	Resp = rpc:call(Nodo,erlang,whereis,[servidor]),
+	Resp2 = rpc:call(Nodo,erlang,is_process_alive,[Resp])==true,
+	if
+		Resp==undefined orelse Resp2/=true->
+			grandulon(Resto,nil);
+		true-> 
+			grandulon(Resto,{Pid,Nodo})
+	end;
+
+grandulon([[_,Nodo,Pid,_]|Resto],Compare) ->
+	Resp = rpc:call(Nodo,erlang,whereis,[servidor]),
+	Resp2 = rpc:call(Nodo,erlang,is_process_alive,[Resp])==true,
+	if
+		Resp==undefined orelse Resp2/=true orelse {Pid,Nodo} > Compare ->
+			grandulon(Resto,{Pid,Nodo})
+		;
+		true->
+			grandulon(Resto,Compare)
+	end.
+	
+
 %La funcion Run Corre el servidor
 %Los parametros son
-%Principal que es el servidor principal, actual
+%OldPrincipal que es el servidor principal, actual
 %Mcast que es la direccion multicat de registro
 %Lista que es la Lista de los servidores con sus contenidos
 %Clientes que es la lista de clientes 
@@ -35,6 +60,25 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
 	io:format("Mi lista de servidores ahora es~n~p~n~n",[Lista]),
 	io:format("Y clientes: ~n~p~n~n",[Clientes]),
+	io:format("Y el servidor principal: ~n~p~n",[Principal]),
+
+	%Son respuestas a llamadas mediante rpc's al servidor principal
+	Resp3 = rpc:call(Principal,erlang,whereis,[servidor]),
+	Resp4 = rpc:call(Principal,erlang,is_process_alive,[Resp3])==true,
+	if
+		Resp3==undefined orelse Resp4/=true ->
+			%Se cayo el servidor principal,
+			%Hacer algoritmo del grandulon
+			io:format("~n~n#####Cayo el principal#####~n~n"),
+			NewS1 = grandulon(Lista,nil),
+		%	NewS1 = Principal,
+			%io:format("Ahora principal~n:~p~n",[NewS1]);
+			run(NewS1, Mcast,Lista,Clientes,Contenido,Red);
+		true ->
+			ok
+	end,
+	io:format("Y principal2: ~n~p~n",[Principal]),
+
 	receive
 		{dar_lista_cliente,From} ->
 			From ! {recibir_lista_cliente,Clientes},
@@ -64,18 +108,27 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido,
-
+			io:format("Principal3~n"),
 			%%Arreglar esto y poner del lado del multicast
 			Resp = rpc:call(Principal,erlang,whereis,[servidor]),
-			Resp2 = rpc:call(Principal,erlang,is_process_alive,[Resp]),
-			io:format("voy~n"),
+			io:format("Principal44~n"),
+			%Resp=ctm,
+			%Resp2=true,
+			Resp2 = (rpc:call(Principal,erlang,is_process_alive,[Resp])==true),
+			io:format("Principal4~n"),
+
 			if
-				Resp==undefined orelse Resp2/=true ->
+
+				Resp/=undefined orelse Resp2/=true ->
 					%Se cayo el servidor principal,
 					%Hacer algoritmo del grandulon
-					io:format("~n~n#####Cayo el principal#####~n~n");
+					io:format("~n~n#####Cayo el principal#####~n~n"),
+					NewS = grandulon(Lista,nil),
+					io:format("Ahora principal~n:~p~n",[NewS]);
+		%			run(NewS, Mcast,Lista,Clientes,Contenido,Red);
 				true ->
 					ok
+		
 			end;
 
 		{peticion_agregar_cliente,ClienteNuevo} ->
@@ -153,7 +206,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewLista = multicast:fuera_muertos(Lista,ListaM);
 
 		Otro->
-			io:format("Cayooooo aquiiiii~n",[Otro]),
+			io:format("Cayooooo aquiiiii ~n~p~n",[Otro]),
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido
@@ -167,7 +220,7 @@ recibir_clientes()->
 	receive
 		{recibir_lista_cliente,Clientes} ->
 			Clientes;
-		Otro->
+		_->
 			recibir_clientes()
 	after 2000 ->
 			[]
@@ -177,7 +230,7 @@ recibir_servidores()->
 	receive
 		{recibir_lista_servidor,Servidores} ->
 			Servidores;
-		Otro->
+		_->
 			recibir_servidores()
 	after 2000 ->
 			[]
@@ -212,7 +265,7 @@ main([Mcast,Principal,K|_]) ->
 %	Serv = recibir_servidores(),
 	{mcast,Mcast} ! {addme,[servidor,node(),self(),[]]},
 
-	spawn(mitimeout,clock,[{servidor,node()},400,revisar_principal]),
+	spawn(mitimeout,clock,[{servidor,node()},200,revisar_principal]),
 
 	%El multicast debe contener la lista de servidores
 	% que estan comunicados con el multicast
