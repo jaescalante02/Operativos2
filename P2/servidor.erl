@@ -1,11 +1,38 @@
 -module(servidor).
--export([main/1,main/0,cambiar_contenido/4]).
+-export([main/1,cambiar_contenido/4,timest/0,promediacion/5]).
 
 %Funcion que revisa si un proceso esta vivo mediante un Multicast en un Nodo
 revisar(Mcast,Nodo)->
 	Resp = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,whereis,[servidor]]),
 	Resp2 = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,is_process_alive,[Resp]])==true,
 	{Resp,Resp2}.
+
+
+%Funcion que retorna el tiempo en segundos de una computadora
+timest() ->
+	calendar:datetime_to_gregorian_seconds({date(),time()}).
+
+
+%Funcion que dada una lista de servidores calcula el promedio
+%de la hora en cada uno de ellos, usada como auiliar para
+%Sacar el promedio de las horas de cada computadora
+
+promediacion(_,[],Seg,Vivos,_) ->
+	Seg / Vivos;
+
+promediacion(Mcast,[[_,Nodo,_,_]|Resto],Segundos,Vivos,TiempoPromediando) ->
+	T1 = now(),
+	Resp = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,servidor,timest,[]]),
+	T2 = now(),
+	Tarda = timer:now_diff(T2,T1)/1000000,
+	if
+		is_number(Resp)->
+			promediacion(Mcast,Resto,Segundos+Resp-TiempoPromediando-Tarda,Vivos+1,TiempoPromediando+Tarda)
+		;
+		true->
+			promediacion(Mcast,Resto,Segundos,Vivos,TiempoPromediando+Tarda)
+	end.
+
 
 
 cambiar_contenido(_,_,_,[])->
@@ -284,7 +311,7 @@ main([Mcast,Principal,K|_]) ->
 	%Inicialmente esta vacia
 	%Y tambien posee la lista de clientes replicadas en cada servidor
 	%PD: La lista de servidores tiene [NombreProcess,Nodo,Pid,Contenido]
-	run(Principal,Mcast,[],[],[],Redundancia).
+	run(Principal,Mcast,[],[],[],Redundancia);
 
-main() ->
+main(_) ->
 	io:format("Debe pasar como parametro, la direccion multicast, la direccion del servidor principal, y un numero K que indica la redundancia~n").
