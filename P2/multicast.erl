@@ -1,5 +1,9 @@
 -module(multicast).
--export([main/1,main/0,enviar_multicast/2,fuera_muertos/2]).
+-export([main/1,main/0,enviar_multicast/2,fuera_muertos/2,hacer_rpc/4]).
+
+
+hacer_rpc(NodoDestino, Modulo, TipoRpc, Argumentos)->
+	rpc:call(NodoDestino,Modulo,TipoRpc,Argumentos).
 
 
 fuera_muertos(L,[])->

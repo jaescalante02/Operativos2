@@ -1,6 +1,12 @@
 -module(servidor).
 -export([main/1,main/0,cambiar_contenido/4]).
 
+%Funcion que revisa si un proceso esta vivo mediante un Multicast en un Nodo
+revisar(Mcast,Nodo)->
+	Resp = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,whereis,[servidor]]),
+	Resp2 = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,is_process_alive,[Resp]])==true,
+	{Resp,Resp2}.
+
 
 cambiar_contenido(_,_,_,[])->
 	[];
@@ -24,28 +30,26 @@ enviar_msg_fifo([Head|Resto],Msg,K,Mcast) ->
 	
 
 
-grandulon([],Minimo) ->
+grandulon([],Minimo,_) ->
 	element(2,Minimo);
 
-grandulon([[_,Nodo,Pid,_]|Resto],nil) ->
-	Resp = rpc:call(Nodo,erlang,whereis,[servidor]),
-	Resp2 = rpc:call(Nodo,erlang,is_process_alive,[Resp])==true,
+grandulon([[_,Nodo,Pid,_]|Resto],nil,Mcast) ->
+	{Resp,Resp2} = revisar(Mcast,Nodo),
 	if
 		Resp==undefined orelse Resp2/=true->
-			grandulon(Resto,nil);
+			grandulon(Resto,nil,Mcast);
 		true-> 
-			grandulon(Resto,{Pid,Nodo})
+			grandulon(Resto,{Pid,Nodo},Mcast)
 	end;
 
-grandulon([[_,Nodo,Pid,_]|Resto],Compare) ->
-	Resp = rpc:call(Nodo,erlang,whereis,[servidor]),
-	Resp2 = rpc:call(Nodo,erlang,is_process_alive,[Resp])==true,
+grandulon([[_,Nodo,Pid,_]|Resto],Compare,Mcast) ->
+	{Resp,Resp2} = revisar(Mcast,Nodo),
 	if
 		Resp==undefined orelse Resp2/=true orelse {Pid,Nodo} > Compare ->
-			grandulon(Resto,{Pid,Nodo})
+			grandulon(Resto,{Pid,Nodo},Mcast)
 		;
 		true->
-			grandulon(Resto,Compare)
+			grandulon(Resto,Compare,Mcast)
 	end.
 	
 
@@ -63,14 +67,17 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 	io:format("Y el servidor principal: ~n~p~n",[Principal]),
 
 	%Son respuestas a llamadas mediante rpc's al servidor principal
-	Resp3 = rpc:call(Principal,erlang,whereis,[servidor]),
-	Resp4 = rpc:call(Principal,erlang,is_process_alive,[Resp3])==true,
+	%Resp3 = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,whereis,[servidor]]),
+	%Resp4 = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,is_process_alive,[Resp3]])==true,
+	{Resp3,Resp4} = revisar(Mcast,Principal),
+
+ 
 	if
 		Resp3==undefined orelse Resp4/=true ->
 			%Se cayo el servidor principal,
 			%Hacer algoritmo del grandulon
 			io:format("~n~n#####Cayo el principal#####~n~n"),
-			NewS1 = grandulon(Lista,nil),
+			NewS1 = grandulon(Lista,nil,Mcast),
 		%	NewS1 = Principal,
 			%io:format("Ahora principal~n:~p~n",[NewS1]);
 			run(NewS1, Mcast,Lista,Clientes,Contenido,Red);
@@ -108,24 +115,29 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido,
-			io:format("Principal3~n"),
+		%	io:format("Principal3~n"),
 			%%Arreglar esto y poner del lado del multicast
-			Resp = rpc:call(Principal,erlang,whereis,[servidor]),
-			io:format("Principal44~n"),
+	%		Resp = rpc:call(Principal,erlang,whereis,[servidor]),
+		%	io:format("Principal44~n"),
 			%Resp=ctm,
 			%Resp2=true,
-			Resp2 = (rpc:call(Principal,erlang,is_process_alive,[Resp])==true),
-			io:format("Principal4~n"),
+	%		Resp2 = (rpc:call(Principal,erlang,is_process_alive,[Resp])==true),
+			%Resp = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,whereis,[servidor]]),
+			%Resp2 = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,is_process_alive,[Resp]])==true,
+			{Resp,Resp2} = revisar(Mcast,Principal),
+
+
+			io:format("Principal4~n~p~n~p~n~n",[Resp,Resp2]),
 
 			if
 
-				Resp/=undefined orelse Resp2/=true ->
+				Resp==undefined orelse Resp2/=true ->
 					%Se cayo el servidor principal,
 					%Hacer algoritmo del grandulon
 					io:format("~n~n#####Cayo el principal#####~n~n"),
-					NewS = grandulon(Lista,nil),
-					io:format("Ahora principal~n:~p~n",[NewS]);
-		%			run(NewS, Mcast,Lista,Clientes,Contenido,Red);
+					NewS = grandulon(Lista,nil,Mcast),
+					io:format("Ahora principal~n:~p~n",[NewS]),
+					run(NewS, Mcast,Lista,Clientes,Contenido,Red);
 				true ->
 					ok
 		
