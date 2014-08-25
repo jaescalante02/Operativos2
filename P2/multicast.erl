@@ -48,6 +48,10 @@ main(Lista) ->
 			{servidor,Nodo} ! {nueva_lista,NewLista},
 		 	enviar_multicast({agreguen_servidor,Servidor},Lista);
 
+		revisen_lista->
+			enviar_multicast({revisen_lista,Lista},Lista),
+			NewLista=Lista;
+
 		{nueva_lista,NewLista}->
 			ok;
 
@@ -82,6 +86,7 @@ main() ->
 	%Se crea un reloj para que el multicast revise quienes estan vivos,
 	%de los que se suscribieron
 	spawn(mitimeout,clock,[{mcast,node()},500,revisar_vivos]),
+	spawn(mitimeout,clock,[{mcast,node()},1000,revisen_Lista]),
 
 	%La lista pasada al otro main, es la lista de servidores activos o registrados
 	%Inicialmente no hay

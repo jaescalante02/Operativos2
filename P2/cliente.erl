@@ -1,8 +1,8 @@
 -module(cliente).
--export([main/0,main/1,menu/1]).
+-export([main/0,main/1,menu/2]).
 
 %Muestra el menu para el usuario
-menu(Server) ->
+menu(Cliente,Server) ->
 	io:format("Menu del cliente, indique el numero de la opcion deseada:~n"),
 	io:format("  1.- Checkout~n"),
 	io:format("  2.- Update~n"),
@@ -23,8 +23,7 @@ menu(Server) ->
 			after  
 				500 ->
 					NewServer = Server
-			end,
-			menu(NewServer)
+			end
 
 		;
 		Opcion=="2\n" ->
@@ -37,33 +36,47 @@ menu(Server) ->
 			after  
 				500 ->
 					NewServer = Server
-			end,
+			end
 
-			menu(NewServer)
 		;
 		Opcion=="3\n" ->
-			io:format("Introduzca el nombre del archivo que desea realizar la operacion:~n"),
+			io:format("Introduzca el nombre del archivo que desea realizar la operacion (introduzca la ruta relativa al directorio actual):~n"),
 			Arch = io:get_line(""),
-			io:format("Opcion 3 ~p~n",[Arch]),
-			{servidor,Server} ! {peticion_agregar_archivo,{Arch,now()}},
-			receive
-				{new,NS} ->
-					NewServer = NS
-			after  
-				500 ->
-					NewServer = Server
+			SZ = string:len(Arch),
+			if
+				SZ=<2 ->
+					Arch2 = Arch;
+				true->
+					Arch2 = string:substr(Arch,1,SZ-1)
 			end,
-			menu(NewServer)
+			io:format("~p~n~n",[Arch2]),
+			EsArchivo = filelib:is_file(Arch2) andalso not(filelib:is_dir(Arch2)),
+			if
+				EsArchivo->
+
+			%{servidor,Server} ! {peticion_agregar_archivo,{Arch,now()}},
+					receive
+						{new,NS} ->
+							NewServer = NS
+					after  
+						500 ->
+							NewServer = Server
+					end;
+				true->
+						io:format("Introduzca un archivo valido."),
+						NewServer=Server
+			end
 		;
 		Opcion=="4\n" ->
+			NewServer=Server,
 			io:format("Hasta pronto~n"),
 			halt(0)
 		;
 		true ->
 			io:format("Opcion invalida, vuelva a intentar:~n"),
-			NewServer=Server,
-			menu(NewServer)
-	end.
+			NewServer=Server
+		end,
+		menu(Cliente,NewServer).
 
 
 
@@ -71,9 +84,9 @@ menu(Server) ->
 %Proceso principal del cliente
 
 main() ->
-	io:format("Debe pasar como parametro el servidor.").
+	io:format("Debe pasar como parametro el nombre del usuario y el servidor al que desea conectarse (el principal).").
 
-main([Server|_])->
+main([Cliente,Server|_])->
 	Conecto = net_kernel:connect_node(Server),
 	if
 		true/=Conecto ->
@@ -82,7 +95,11 @@ main([Server|_])->
 		true ->
 			io:format("")
 	end,
-	{servidor,Server} ! {peticion_agregar_cliente,{self(),node()}},
+	NombreCliente = atom_to_list(Cliente),
+	{servidor,Server} ! {peticion_agregar_cliente,NombreCliente,{self(),node()}},
 	%%Logro conectar con el servidor y lanzo el menu para el usuario
-	menu(Server).
+	menu(NombreCliente,Server);
+	
+main(_) ->
+	io:format("Debe pasar como parametro el nombre del usuario y el servidor al que desea conectarse (el principal).").
 

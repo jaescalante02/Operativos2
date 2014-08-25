@@ -3,10 +3,10 @@
 
 %Funcion que revisa si un proceso esta vivo mediante un Multicast en un Nodo
 revisar(Mcast,Nodo)->
-	Resp = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,whereis,[servidor]]),
-	Resp2 = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,is_process_alive,[Resp]])==true,
-	%Resp = ok,
-	%Resp2 = net_adm:ping(Nodo)==pong,
+%	Resp = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,whereis,[servidor]]),
+%	Resp2 = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,is_process_alive,[Resp]])==true,
+	Resp = ok,
+	Resp2 = net_adm:ping(Nodo)==pong,
 	{Resp,Resp2}.
 
 
@@ -136,6 +136,18 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewClientes = Clientes,
 			NewContenido = Contenido;
 
+		{revisen_lista,Lista2} ->
+			if
+				Lista/=Lista2 ->
+					NewLista=Lista2;
+
+				true->
+					NewLista = Lista
+			end,
+			NewClientes = Clientes,
+			NewContenido = Contenido;
+
+
 		{nueva_lista_cl,Clients}->
 			NewLista = Lista,
 			NewClientes = Clients,
@@ -174,22 +186,28 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 		
 			end;
 
-		{peticion_agregar_cliente,ClienteNuevo} ->
+		{peticion_agregar_cliente,Nombre,ClienteNuevo} ->
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido,
-			{mcast,Mcast} ! {multicasts,{agregar_cliente,ClienteNuevo}}
+			{mcast,Mcast} ! {multicasts,{agregar_cliente,Nombre,ClienteNuevo}}
 			;
 
 		%Agrega un cliente nuevo al servidor por si luego
 		%se cae el servidor principal se envia un msg a cada cliente
 		%para que  el servidor actualice a cada cliente con quien es el
 		%Principal
-		{agregar_cliente,ClienteNuevo} ->
+		{agregar_cliente,Nombre,ClienteNuevo} ->
 			io:format("Agrego cliente~n~n"),
 			NewLista=Lista,
 			NewClientes = Clientes ++ [ClienteNuevo],
-			NewContenido = Contenido;
+			NewContenido = Contenido,
+			
+			%Creo la carpeta correspondiente al repo del cliente si es 
+			%necesario
+			Servi = atom_to_list(node()),
+			filelib:ensure_dir(filename:absname("")++"/"++Servi++"/"++Nombre++"/")
+			;
 
 		%msg que indica que un cliente quiere ser agregado con lo que 
 		%el servidor (se asume que es el principal el que recibe la
@@ -288,6 +306,15 @@ recibir_servidores()->
 
 main([Mcast,Principal,K|_]) -> 
 	register(servidor,self()),
+
+	
+	%Crea el directorio respectivo del servidor
+	Servi = atom_to_list(node()),
+
+	filelib:ensure_dir(filename:absname("")++"/"++Servi++"/"),
+
+	%Se asegura de que el directorio exista, es decir lo crea si no esta
+	filelib:ensure_dir(Servi),
 
 	Number = atom_to_list(K),
 	{Redundancia,Resto} = string:to_integer(Number),
