@@ -5,6 +5,8 @@
 revisar(Mcast,Nodo)->
 	Resp = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,whereis,[servidor]]),
 	Resp2 = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,is_process_alive,[Resp]])==true,
+	%Resp = ok,
+	%Resp2 = net_adm:ping(Nodo)==pong,
 	{Resp,Resp2}.
 
 
@@ -18,13 +20,13 @@ timest() ->
 %Sacar el promedio de las horas de cada computadora
 
 promediacion(_,[],Seg,Vivos,_) ->
-	Seg / Vivos;
+	Seg div Vivos;
 
 promediacion(Mcast,[[_,Nodo,_,_]|Resto],Segundos,Vivos,TiempoPromediando) ->
 	T1 = now(),
 	Resp = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,servidor,timest,[]]),
 	T2 = now(),
-	Tarda = timer:now_diff(T2,T1)/1000000,
+	Tarda = timer:now_diff(T2,T1) div 1000000,
 	if
 		is_number(Resp)->
 			promediacion(Mcast,Resto,Segundos+Resp-TiempoPromediando-Tarda,Vivos+1,TiempoPromediando+Tarda)
@@ -55,13 +57,15 @@ enviar_msg_fifo([Head|Resto],Msg,K,Mcast) ->
 	{mcast,Mcast} ! {unicasts,{Process,Node},Msg},
 	enviar_msg_fifo(Resto++[Head],Msg,K-1,Mcast).
 	
-
+grandulon([],nil,_) ->
+	node();
 
 grandulon([],Minimo,_) ->
 	element(2,Minimo);
 
 grandulon([[_,Nodo,Pid,_]|Resto],nil,Mcast) ->
 	{Resp,Resp2} = revisar(Mcast,Nodo),
+	%io:format("~p~n~n~n",[Resp2]),
 	if
 		Resp==undefined orelse Resp2/=true->
 			grandulon(Resto,nil,Mcast);
@@ -96,21 +100,21 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 	%Son respuestas a llamadas mediante rpc's al servidor principal
 	%Resp3 = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,whereis,[servidor]]),
 	%Resp4 = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,is_process_alive,[Resp3]])==true,
-	{Resp3,Resp4} = revisar(Mcast,Principal),
+%	{Resp3,Resp4} = revisar(Mcast,Principal),
 
  
-	if
-		Resp3==undefined orelse Resp4/=true ->
-			%Se cayo el servidor principal,
-			%Hacer algoritmo del grandulon
-			io:format("~n~n#####Cayo el principal#####~n~n"),
-			NewS1 = grandulon(Lista,nil,Mcast),
-		%	NewS1 = Principal,
-			%io:format("Ahora principal~n:~p~n",[NewS1]);
-			run(NewS1, Mcast,Lista,Clientes,Contenido,Red);
-		true ->
-			ok
-	end,
+%	if
+%		Resp3==undefined orelse Resp4/=true ->
+%			%Se cayo el servidor principal,
+%			%Hacer algoritmo del grandulon
+%			io:format("~n~n#####Cayo el principal#####~n~n"),
+%			NewS1 = grandulon(Lista,nil,Mcast),
+%			NewS1 = Principal,
+%			io:format("Ahora principal~n:~p~n",[NewS1]),
+%			run(NewS1, Mcast,Lista,Clientes,Contenido,Red);
+%		true ->
+%			ok
+%	end,
 	io:format("Y principal2: ~n~p~n",[Principal]),
 
 	receive
@@ -226,7 +230,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 		{agregar_archivo,Arch} ->
 			io:format("entre~n~n~n"),
 			NewClientes = Clientes,
-			Contengo = lists:delete(Arch,Contenido),
+			Contengo = Contenido,
 			NewContenido = Contengo++[Arch],
 			ContenidoAAgregar = NewContenido,
 			NewLista=Lista,
@@ -249,7 +253,12 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido
-
+			
+		after
+			500 ->
+				NewLista=Lista,
+				NewClientes = Clientes,
+				NewContenido = Contenido	
 
 	end,
 	run(Principal,Mcast,NewLista,NewClientes,NewContenido,Red).
@@ -304,7 +313,7 @@ main([Mcast,Principal,K|_]) ->
 %	Serv = recibir_servidores(),
 	{mcast,Mcast} ! {addme,[servidor,node(),self(),[]]},
 
-	spawn(mitimeout,clock,[{servidor,node()},200,revisar_principal]),
+	spawn(mitimeout,clock,[{servidor,node()},500,revisar_principal]),
 
 	%El multicast debe contener la lista de servidores
 	% que estan comunicados con el multicast
