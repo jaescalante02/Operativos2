@@ -53,8 +53,11 @@ menu(Cliente,Server) ->
 			EsArchivo = filelib:is_file(Arch2) andalso not(filelib:is_dir(Arch2)),
 			if
 				EsArchivo->
-
-			%{servidor,Server} ! {peticion_agregar_archivo,{Arch,now()}},
+				
+				{ok,File} = file:read_file(Arch2),
+				Contenido = unicode:characters_to_list(File),
+				io:format("Contenido: ~p~n",[Contenido]),
+				{servidor,Server} ! {peticion_agregar_archivo,Cliente,{Arch2,Contenido}},
 					receive
 						{new,NS} ->
 							NewServer = NS

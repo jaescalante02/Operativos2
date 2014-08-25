@@ -229,8 +229,10 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewLista = Lista
 			;
 
-		{peticion_agregar_archivo,Arch} ->
-			NewLista = enviar_msg_fifo(Lista,{agregar_archivo,Arch},Red+1,Mcast),
+		{peticion_agregar_archivo,Cliente,{Arch,Cont}} ->
+			io:format("Estoy aqui~n~n@!#!@#!~n"),
+			Tiempo = integer_to_list(promediacion(Mcast,Lista,0,0,0)),
+			NewLista = enviar_msg_fifo(Lista,{add_a,{Cliente,Arch,Cont,Tiempo}},Red+1,Mcast),
 			NewClientes = Clientes,
 			NewContenido = Contenido
 			;
@@ -245,11 +247,20 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
 			
 
-		{agregar_archivo,Arch} ->
-			io:format("entre~n~n~n"),
+		{add_a,Tupla} ->
+			io:format("Imprime nojoda!~n~n"),
+			Cliente=element(1,Tupla),
+			Arch = element(2,Tupla),
+			Cont = element(3,Tupla),
+			Tiempo = element(4,Tupla),
+			io:format("$$$$$$$$$$$$$$$$$$$add~n"),
+			io:format("Contenido=~p~nCliente=~p~n",[Cont,Cliente]),
+			Servi = atom_to_list(node()),
+
+			file:write_file(Servi++"/"++Cliente++"/"++Arch++"_"++Tiempo,Cont),
 			NewClientes = Clientes,
 			Contengo = Contenido,
-			NewContenido = Contengo++[Arch],
+			NewContenido = Contengo++[Arch++"_"++Tiempo],
 			ContenidoAAgregar = NewContenido,
 			NewLista=Lista,
 			{mcast,Mcast} ! {cambio_contenido,{self(),node(),NewContenido}},
@@ -264,8 +275,8 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 		{muertos,ListaM} ->
 			NewClientes = Clientes,
 			NewContenido = Contenido,
-			NewLista = multicast:fuera_muertos(Lista,ListaM);
-
+			NewLista = multicast:fuera_muertos(Lista,ListaM)
+		;	
 		Otro->
 			io:format("Cayooooo aquiiiii ~n~p~n",[Otro]),
 			NewLista=Lista,
@@ -347,6 +358,7 @@ main([Mcast,Principal,K|_]) ->
 	%Inicialmente esta vacia
 	%Y tambien posee la lista de clientes replicadas en cada servidor
 	%PD: La lista de servidores tiene [NombreProcess,Nodo,Pid,Contenido]
+	{ok,ListaActual} = file:list_dir(Servi), 
 	run(Principal,Mcast,[],[],[],Redundancia);
 
 main(_) ->
