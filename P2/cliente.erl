@@ -2,8 +2,9 @@
 -export([main/0,main/1,menu/2]).
 
 enviar_peticion_hasta_update(Cliente,Server,Archivo)->
+	timer:sleep(4000),
 	{servidor,Server} ! {peticion_buscar_archivo,Cliente,{self(),node()},Archivo},
-
+	io:format("~p~n",[Server]),
 	receive
 		no_existe->
 			Ya=true,
@@ -16,10 +17,12 @@ enviar_peticion_hasta_update(Cliente,Server,Archivo)->
 			file:write_file(Archivo,Contenido)
 		;
 		{new_principal,Principal}->
+			io:format("Nuevo~n"),
 			Ya = false
 		%Posiblemente no llego el mensaje y manda de nuevo la peticion
 		after
 			5000->
+				io:format("Timeout~n"),
 				Ya = false,
 				Principal = Server
 	end,

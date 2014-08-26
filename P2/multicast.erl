@@ -35,6 +35,13 @@ enviar_multicast(Msg,[[Proces,Serv|_]|Resto]) ->
 	{Proces,Serv} ! Msg,
 	enviar_multicast(Msg,Resto).
 
+enviar_multicast_tuplas(_,[])->
+	ok;
+
+enviar_multicast_tuplas(Msg,[{Proces,Serv}|Resto]) ->
+	{cliente,Serv} ! Msg,
+	enviar_multicast(Msg,Resto).
+
 %%Funcion principal de la direccion multicast
 main(Lista) ->
 	io:format("Lista de servidores afiliados: ~n ~p~n~n~n",[Lista]),
@@ -80,7 +87,14 @@ main(Lista) ->
 
 		{multicasts,Msg,NL} ->
 			NewLista = Lista,
-			enviar_multicast(Msg,Lista)
+			enviar_multicast(Msg,NL);
+
+		{multicasts_cliente,Msg,NL} ->
+			NewLista = Lista,
+			io:format("Envio~n"),
+			enviar_multicast_tuplas(Msg,NL),
+			io:format("Listo~n")
+
 	end,
 	multicast:main(NewLista).
 

@@ -180,7 +180,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 %			ok
 %	end,
 	io:format("Y principal2: ~n~p~n",[Principal]),
-	io:format("Y contenido: ~n~p~n",[Contenido]),
+%	io:format("Y contenido: ~n~p~n",[Contenido]),
 
 	receive
 		{dar_lista_cliente,From} ->
@@ -248,7 +248,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 					io:format("~n~n#####Cayo el principal#####~n~n"),
 					NewS = grandulon(Lista,nil,Mcast),
 					io:format("Ahora principal~n:~p~n",[NewS]),
-					{mcast,Mcast} ! {multicasts, {new_principal,NewS},Clientes},
+					{mcast,Mcast} ! {multicasts_cliente, {new_principal,NewS},Clientes},
 					{mcast,Mcast} ! {multicasts, {new_princ,NewS}},
 
 					run(NewS, Mcast,Lista,Clientes,Contenido,Red);
