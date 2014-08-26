@@ -35,6 +35,20 @@ promediacion(Mcast,[[_,Nodo,_,_]|Resto],Segundos,Vivos,TiempoPromediando) ->
 			promediacion(Mcast,Resto,Segundos,Vivos,TiempoPromediando+Tarda)
 	end.
 
+parsear_archivos([])->
+	[];
+
+parsear_archivos([Archivo|Resto])->
+	Index = string:str(Archivo,"_"),
+	Nombre = string:substr(Archivo,1,Index-1),
+	Version = string:substr(Archivo,Index+1),
+	[{Nombre,Version}] ++ parsear_archivos(Resto).
+
+procesar_directorios(_,[])->
+	[];
+procesar_directorios(Nodo,[Usuario|Resto])->
+	{ok,Archivos} = file:list_dir(Nodo++"/"++Usuario),
+	[[Usuario]++parsear_archivos(Archivos)] ++ procesar_directorios(Nodo,Resto).
 
 
 cambiar_contenido(_,_,_,[])->
@@ -82,7 +96,13 @@ grandulon([[_,Nodo,Pid,_]|Resto],Compare,Mcast) ->
 		true->
 			grandulon(Resto,Compare,Mcast)
 	end.
-	
+
+agregar_al_cliente([],_,_,_)->
+	[];
+agregar_al_cliente([[Usuario|Resto1]|Resto2],Usuario,Archivo,Etiqueta)->
+	[[Usuario,{Archivo,Etiqueta}]++Resto1] ++ Resto2;
+agregar_al_cliente([Head|Resto],Usuario,Archivo,Etiqueta)->
+	[Head]++agregar_al_cliente(Resto,Usuario,Archivo,Etiqueta).
 
 %La funcion Run Corre el servidor
 %Los parametros son
@@ -246,7 +266,8 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			{mcast,Mcast} ! {unicasts,{servidor,Nodo},{nueva_lista_cl,Clientes}};
 
 			
-
+		%Aqui se agregan los archivos realmente, la guardia que esta antes de
+		%la anterior a esta solo recibe la peticion del cliente
 		{add_a,Tupla} ->
 			io:format("Imprime nojoda!~n~n"),
 			Cliente=element(1,Tupla),
@@ -260,7 +281,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			file:write_file(Servi++"/"++Cliente++"/"++Arch++"_"++Tiempo,Cont),
 			NewClientes = Clientes,
 			Contengo = Contenido,
-			NewContenido = Contengo++[Arch++"_"++Tiempo],
+			NewContenido = agregar_al_cliente(Contengo,Cliente,Arch,Tiempo),
 			ContenidoAAgregar = NewContenido,
 			NewLista=Lista,
 			{mcast,Mcast} ! {cambio_contenido,{self(),node(),NewContenido}},
@@ -349,7 +370,9 @@ main([Mcast,Principal,K|_]) ->
 %	{mcast,Mcast} ! {multicast,{dar_lista_servidor,{self(),node()}}},
 %	Client = recibir_clientes(),
 %	Serv = recibir_servidores(),
-	{mcast,Mcast} ! {addme,[servidor,node(),self(),[]]},
+	{ok,ListaActual} = file:list_dir(Servi),
+	Content = procesar_directorios(Servi,ListaActual),
+	{mcast,Mcast} ! {addme,[servidor,node(),self(),Content]},
 
 	spawn(mitimeout,clock,[{servidor,node()},500,revisar_principal]),
 
@@ -358,8 +381,8 @@ main([Mcast,Principal,K|_]) ->
 	%Inicialmente esta vacia
 	%Y tambien posee la lista de clientes replicadas en cada servidor
 	%PD: La lista de servidores tiene [NombreProcess,Nodo,Pid,Contenido]
-	{ok,ListaActual} = file:list_dir(Servi), 
-	run(Principal,Mcast,[],[],[],Redundancia);
+	 
+	run(Principal,Mcast,[],[],Content,Redundancia);
 
 main(_) ->
 	io:format("Debe pasar como parametro, la direccion multicast, la direccion del servidor principal, y un numero K que indica la redundancia~n").
