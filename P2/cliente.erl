@@ -2,7 +2,7 @@
 -export([main/0,main/1,menu/2]).
 
 enviar_peticion_hasta_update(Cliente,Server,Archivo)->
-	timer:sleep(4000),
+%	timer:sleep(4000),
 	{servidor,Server} ! {peticion_buscar_archivo,Cliente,{self(),node()},Archivo},
 	io:format("~p~n",[Server]),
 	receive
