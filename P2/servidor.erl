@@ -180,6 +180,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 %			ok
 %	end,
 	io:format("Y principal2: ~n~p~n",[Principal]),
+	io:format("Y contenido: ~n~p~n",[Contenido]),
 
 	receive
 		{dar_lista_cliente,From} ->
@@ -248,11 +249,20 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 					NewS = grandulon(Lista,nil,Mcast),
 					io:format("Ahora principal~n:~p~n",[NewS]),
 					{mcast,Mcast} ! {multicasts, {new_principal,NewS},Clientes},
+					{mcast,Mcast} ! {multicasts, {new_princ,NewS}},
+
 					run(NewS, Mcast,Lista,Clientes,Contenido,Red);
 				true ->
 					ok
 		
 			end;
+
+		{new_princ,NewServ}->
+			NewLista=Lista,
+			NewClientes = Clientes,
+			NewContenido = Contenido,
+			run(NewServ,Mcast,NewLista,NewClientes,NewContenido,Red);
+		
 
 		{peticion_agregar_cliente,Nombre,ClienteNuevo} ->
 			NewLista=Lista,
@@ -266,14 +276,26 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 		%para que  el servidor actualice a cada cliente con quien es el
 		%Principal
 		{agregar_cliente,Nombre,ClienteNuevo} ->
-			io:format("Agrego cliente~n~n"),
+			io:format("####~n####~n####~nAgrego cliente~n~n"),
 			NewLista=Lista,
 			NewClientes = Clientes ++ [ClienteNuevo],
-			NewContenido = Contenido,
+			Servi = atom_to_list(node()),
+			Condic = filelib:is_dir(Servi++"/"++Nombre),
+			if
+				not (Condic)->
+					NewContenido = Contenido++[[Nombre]],
+					{mcast,Mcast} ! {cambio_contenido,{self(),node(),NewContenido}},
+					{mcast,Mcast} ! {multicasts,{cambio_contenido,{self(),node(),NewContenido}}}
+
+				;
+				true->
+					NewContenido = Contenido
+			end,
+			filelib:ensure_dir(Servi++"/"++Nombre),
+			{ok,ListaActual} = file:list_dir(Servi),
 			
 			%Creo la carpeta correspondiente al repo del cliente si es 
 			%necesario
-			Servi = atom_to_list(node()),
 			filelib:ensure_dir(filename:absname("")++"/"++Servi++"/"++Nombre++"/")
 			;
 
