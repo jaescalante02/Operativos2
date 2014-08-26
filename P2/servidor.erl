@@ -247,6 +247,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 					io:format("~n~n#####Cayo el principal#####~n~n"),
 					NewS = grandulon(Lista,nil,Mcast),
 					io:format("Ahora principal~n:~p~n",[NewS]),
+					{mcast,Mcast} ! {multicasts, {new_principal,NewS},Clientes},
 					run(NewS, Mcast,Lista,Clientes,Contenido,Red);
 				true ->
 					ok
@@ -372,13 +373,14 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 		{add_a,Tupla} ->
 			io:format("Imprime nojoda!~n~n"),
 			Cliente=element(1,Tupla),
-			Arch = element(2,Tupla),
+			Arch2 = element(2,Tupla),
+			Arch = string:substr(Arch2,string:rstr(Arch2,"/")+1),
 			Cont = element(3,Tupla),
 			Tiempo = element(4,Tupla),
 			io:format("$$$$$$$$$$$$$$$$$$$add~n"),
 			io:format("Contenido=~p~nCliente=~p~n",[Cont,Cliente]),
 			Servi = atom_to_list(node()),
-
+			filelib:ensure_dir(Servi++"/"++Cliente++"/"++Arch++"_"++Tiempo),
 			file:write_file(Servi++"/"++Cliente++"/"++Arch++"_"++Tiempo,Cont),
 			NewClientes = Clientes,
 			Contengo = Contenido,

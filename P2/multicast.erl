@@ -76,6 +76,11 @@ main(Lista) ->
 		{multicasts,Msg} ->
 			NewLista = Lista,
 			enviar_multicast(Msg,Lista)
+		;
+
+		{multicasts,Msg,NL} ->
+			NewLista = Lista,
+			enviar_multicast(Msg,Lista)
 	end,
 	multicast:main(NewLista).
 

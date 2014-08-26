@@ -12,6 +12,7 @@ enviar_peticion_hasta_update(Cliente,Server,Archivo)->
 		{update,Contenido}->
 			Ya = true,
 			Principal = Server,
+			filelib:ensure_dir(Archivo),
 			file:write_file(Archivo,Contenido)
 		;
 		{new_principal,Principal}->
@@ -69,6 +70,7 @@ menu(Cliente,Server) ->
 			end,
 			io:format("~p~n~n",[Arch2]),
 			EsArchivo = filelib:is_file(Arch2) andalso not(filelib:is_dir(Arch2)),
+			io:format("Archivo ~p~n~p~n~n",[Arch2,EsArchivo]),
 			if
 				EsArchivo->
 				
