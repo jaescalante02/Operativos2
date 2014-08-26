@@ -35,6 +35,8 @@ enviar_peticion_hasta_update(Cliente,Server,Archivo)->
 			enviar_peticion_hasta_update(Cliente,Principal,Archivo)
 	end.
 
+
+
 %Muestra el menu para el usuario
 menu(Cliente,Server) ->
 	io:format("Menu del cliente, indique el numero de la opcion deseada:~n"),

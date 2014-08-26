@@ -100,7 +100,8 @@ grandulon([[_,Nodo,Pid,_]|Resto],Compare,Mcast) ->
 agregar_al_cliente([],_,_,_)->
 	[];
 agregar_al_cliente([[Usuario|Resto1]|Resto2],Usuario,Archivo,Etiqueta)->
-	[[Usuario,{Archivo,Etiqueta}]++Resto1] ++ Resto2;
+	Resto3 = lists:delete({Archivo,Etiqueta},Resto1),
+	[[Usuario,{Archivo,Etiqueta}]++Resto3] ++ Resto2;
 agregar_al_cliente([Head|Resto],Usuario,Archivo,Etiqueta)->
 	[Head]++agregar_al_cliente(Resto,Usuario,Archivo,Etiqueta).
 
