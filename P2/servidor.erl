@@ -104,6 +104,50 @@ agregar_al_cliente([[Usuario|Resto1]|Resto2],Usuario,Archivo,Etiqueta)->
 agregar_al_cliente([Head|Resto],Usuario,Archivo,Etiqueta)->
 	[Head]++agregar_al_cliente(Resto,Usuario,Archivo,Etiqueta).
 
+
+%Busca los archivos asosicados a un usuario en un nodo
+buscar_lista_usuario(_,[])->
+	[];
+buscar_lista_usuario(Usuario,[[Usuario|Cont]|_])->
+	Cont;
+
+buscar_lista_usuario(Usuario,[X|Resto])->
+	buscar_lista_usuario(Usuario,Resto).
+
+
+mejor_version(_,[],Res)->
+	Res;
+
+mejor_version(Archivo,[Head|Resto],Res)->
+	{Arch,Version} = Head,
+	if
+		Arch==Archivo andalso (Res==nil orelse Version>Res)->
+			mejor_version(Archivo,Resto,Version);
+		true->
+			mejor_version(Archivo,Resto,Res)
+	end.
+
+
+%Busca el nodo con la version mas reciente de un archivo especifico
+nodo_con_version_mas_reciente(_,_,[],Version,Nodo)->
+	{Version,Nodo};
+
+nodo_con_version_mas_reciente(NombreCliente,Archivo,[[_,Nodo,_,Cont]|Resto],MejorVersion,MejorNodo)->
+	ListaUser = buscar_lista_usuario(NombreCliente,Cont),
+	Version = mejor_version(Archivo,ListaUser,nil),
+	if
+		Version==nil->
+			nodo_con_version_mas_reciente(NombreCliente,Archivo,Resto,MejorVersion,MejorNodo);
+		MejorVersion==nil->
+			nodo_con_version_mas_reciente(NombreCliente,Archivo,Resto,Version,Nodo);
+		{Version,Nodo} > {MejorVersion,MejorNodo}->
+			nodo_con_version_mas_reciente(NombreCliente,Archivo,Resto,Version,Nodo);
+		true ->
+			nodo_con_version_mas_reciente(NombreCliente,Archivo,Resto,MejorVersion,MejorNodo)
+
+	end.	
+
+
 %La funcion Run Corre el servidor
 %Los parametros son
 %OldPrincipal que es el servidor principal, actual
@@ -139,12 +183,14 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
 	receive
 		{dar_lista_cliente,From} ->
+			io:format("doy lista~n"),
 			From ! {recibir_lista_cliente,Clientes},
 			NewLista = Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido;
 
 		{dar_lista_servidor,From} ->
+			io:format("dar_lista~n"),
 			From ! {recibir_lista_servidor,Lista},
 			NewLista = Lista,
 			NewClientes = Clientes,
@@ -175,6 +221,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
 
 		revisar_principal->
+			io:format("Reviso principal"),
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido,
@@ -240,15 +287,68 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewClientes = Clientes,
 			NewContenido = Contenido;
 
-		{buscar_archivo,Nombre}->
-			io:format("Busco version mas reciente archivo"),
-			%Resp = buscarArchivo(Nombre,Contenido),
-			%{servidor,Principal} ! ,
+		%Aqui se busca la mejor version de un archivo
+		{peticion_buscar_archivo,NombreCliente,NodoCliente,Archivo} ->
+			io:format("Hora de buscar########~n"),
+			NewLista=Lista,
+			NewClientes = Clientes,
+			NewContenido = Contenido,
+			{mcast,Mcast} ! {multicasts,{buscar_archivo,NombreCliente,NodoCliente,Archivo}}
+			;
+
+
+		{buscar_archivo,NombreCliente,NodoCliente,Archivo}->
+			io:format("Busco version mas reciente archivo~n"),
+			{Version,Busqueda} = nodo_con_version_mas_reciente(NombreCliente,Archivo,Lista,nil,nil),
+			io:format("Version=~p~nNodo=~p~n~n",[Version,Busqueda]),
+			if
+				%Envio el mensaje al cliente si esta este nodo tiene la
+				%mejor version
+				node()==Busqueda->
+					io:format("Es el archivo~n"),
+					io:format("~p~n~n",[ atom_to_list(node())++"/"++NombreCliente++"/"++Archivo]),
+					{ok,File} = file:read_file(atom_to_list(node())++"/"++NombreCliente++"/"++Archivo++"_"++Version),
+					io:format("No lo es~n"),
+					EnviarCont = unicode:characters_to_list(File),
+					io:format("Tampoco lo es~n"),
+					{mcast,Mcast} ! {unicasts,{servidor,Principal},{enviar_update,NodoCliente,EnviarCont}};
+
+				%No existe tal archivo en ningun repo
+				Busqueda==nil->
+					{mcast,Mcast} ! {unicasts,{servidor,Principal},{no_existe,NodoCliente}};
+
+				%Existe una version del archivo, pero esta en otro nodo
+				%entonces, no la paso	
+				true->
+					ok
+			end,
+			io:format("Salgo~n~n"),
 			NewClientes = Clientes,
 			NewContenido = Contenido,
 			NewLista = Lista
 			;
 
+		{enviar_update,NodoCliente,Conte}->
+			io:format("Update~n~p~n~p~n",[NodoCliente,Conte]),
+			Pid = element(1,NodoCliente),
+			Nod = element(2,NodoCliente),
+			
+			{cliente,Nod} ! {update,Conte},
+			io:format("Peo~n"),
+			NewClientes = Clientes,
+			NewContenido = Contenido,
+			NewLista = Lista
+			;
+
+
+		{no_existe,NodoCliente}->
+			io:format("No existe~n"),
+			Nod = element(2,NodoCliente),
+			{cliente,Nod} ! no_existe,
+			NewClientes = Clientes,
+			NewContenido = Contenido,
+			NewLista = Lista
+		;
 		{peticion_agregar_archivo,Cliente,{Arch,Cont}} ->
 			io:format("Estoy aqui~n~n@!#!@#!~n"),
 			Tiempo = integer_to_list(promediacion(Mcast,Lista,0,0,0)),
@@ -258,6 +358,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			;
 	
 		{agreguen_servidor,S} ->
+			io:format("Agrego servidor"),
 			NewClientes = Clientes,
 			NewContenido = Contenido,
 			NewLista = Lista++[S],
@@ -289,6 +390,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			;
 		
 		{cambio_contenido,{Proc,Nodo,NuevoCont}} ->
+			io:format("Cambiocont~n"),
 			NewClientes = Clientes,
 			NewContenido = Contenido,
 			NewLista = cambiar_contenido(Proc,Nodo,NuevoCont,Lista);
