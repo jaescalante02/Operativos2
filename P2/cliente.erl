@@ -1,10 +1,14 @@
 -module(cliente).
 -export([main/0,main/1,menu/2]).
 
+
+%Funcion que se encarga de asegurar que una peticion de update
+%Se haga efectivamente
 enviar_peticion_hasta_update(Cliente,Server,Archivo)->
+
+%Descomentar la siguiente linea para la prueba de fallas
 %	timer:sleep(4000),
 	{servidor,Server} ! {peticion_buscar_archivo,Cliente,{self(),node()},Archivo},
-	io:format("~p~n",[Server]),
 	receive
 		no_existe->
 			Ya=true,
@@ -13,22 +17,20 @@ enviar_peticion_hasta_update(Cliente,Server,Archivo)->
 		{update,Contenido}->
 			Ya = true,
 			Principal = Server,
+			io:format("Archivo actualizado~n"),
 			filelib:ensure_dir(Archivo),
 			file:write_file(Archivo,Contenido)
 		;
 		{new_principal,Principal}->
-			io:format("Nuevo~n"),
 			Ya = false
 		%Posiblemente no llego el mensaje y manda de nuevo la peticion
 		after
 			5000->
-				io:format("Timeout~n"),
 				Ya = false,
 				Principal = Server
 	end,
 	if
 		Ya->
-			%erlang:flush(),
 			Principal
 		;
 		true->
@@ -44,13 +46,11 @@ menu(Cliente,Server) ->
 	io:format("  2.- Commit~n"),
 	io:format("  3.- Salir~n"),
 	Opcion = io:get_line(""),
-	%io:format("~p~n",[Opcion]),
 	%Espera a ver si hubo un cambio de servidor principal durante medio segundo
 	if
 		Opcion=="1\n" ->
 			io:format("Introduzca el nombre del archivo que desea realizar la operacion:~n"),
 			Arch = io:get_line(""),
-			%erlang:flush(),	
 			SZ = string:len(Arch),
 			if
 				SZ=<2 ->
@@ -58,10 +58,8 @@ menu(Cliente,Server) ->
 				true->
 					Arch2 = string:substr(Arch,1,SZ-1)
 			end,
-			io:format("~p~n~n",[Arch2]),
 
 			NewServer = enviar_peticion_hasta_update(Cliente,Server,Arch2)
-			%erlang:flush()
 		;
 		Opcion=="2\n" ->
 			io:format("Introduzca el nombre del archivo que desea realizar la operacion (introduzca la ruta relativa al directorio actual):~n"),
@@ -73,15 +71,12 @@ menu(Cliente,Server) ->
 				true->
 					Arch2 = string:substr(Arch,1,SZ-1)
 			end,
-			io:format("~p~n~n",[Arch2]),
 			EsArchivo = filelib:is_file(Arch2) andalso not(filelib:is_dir(Arch2)),
-			io:format("Archivo ~p~n~p~n~n",[Arch2,EsArchivo]),
 			if
 				EsArchivo->
 				
 				{ok,File} = file:read_file(Arch2),
 				Contenido = unicode:characters_to_list(File),
-				%io:format("Contenido: ~p~n",[Contenido]),
 				{servidor,Server} ! {peticion_agregar_archivo,Cliente,{Arch2,Contenido}},
 					receive
 						{new,NS} ->
@@ -89,7 +84,8 @@ menu(Cliente,Server) ->
 					after  
 						500 ->
 							NewServer = Server
-					end;
+					end,
+					io:format("Archivo enviado~n");
 				true->
 						io:format("Introduzca un archivo valido."),
 						NewServer=Server

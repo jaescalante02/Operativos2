@@ -2,10 +2,11 @@
 -export([main/1,main/0,enviar_multicast/2,fuera_muertos/2,hacer_rpc/4]).
 
 
+%Funcion que hace RPC en algun nodo
 hacer_rpc(NodoDestino, Modulo, TipoRpc, Argumentos)->
 	rpc:call(NodoDestino,Modulo,TipoRpc,Argumentos).
 
-
+%Funcion que quita los nodos muertos de una lista de nodos
 fuera_muertos(L,[])->
 	L;
 
@@ -14,12 +15,11 @@ fuera_muertos(Lista,[Muerto|Murieron]) ->
 	fuera_muertos(NewL,Murieron).
 
 
+%Funcion que revisa que nodos estan vivos
 revisar([]) ->
 	[];
 revisar([[Process,Node,Pid | Cont]|Resto])->
 	Cond = 	rpc:call(Node,erlang,is_process_alive,[Pid])==true,
-%	Cond = 	rpc:call(Node,erlang,whereis,[Process]),  
-	%io:format("Cond ~p~n",[Cond]),
 	if
 		not (Cond) ->
 			[[Process,Node,Pid | Cont]] ++ revisar(Resto);
@@ -27,7 +27,7 @@ revisar([[Process,Node,Pid | Cont]|Resto])->
 			revisar(Resto)
 	end.
 
-
+%Funcion encargada de enviar un multicast a una lista de nodos
 enviar_multicast(_,[])->
 	ok;
 
@@ -35,16 +35,19 @@ enviar_multicast(Msg,[[Proces,Serv|_]|Resto]) ->
 	{Proces,Serv} ! Msg,
 	enviar_multicast(Msg,Resto).
 
+
+%Funcion encargada de informar a los clientes de algun msj del 
+%Servidor principal
 enviar_multicast_tuplas(_,[])->
 	ok;
 
-enviar_multicast_tuplas(Msg,[{Proces,Serv}|Resto]) ->
+enviar_multicast_tuplas(Msg,[{_,Serv}|Resto]) ->
 	{cliente,Serv} ! Msg,
 	enviar_multicast(Msg,Resto).
 
 %%Funcion principal de la direccion multicast
 main(Lista) ->
-	io:format("Lista de servidores afiliados: ~n ~p~n~n~n",[Lista]),
+	io:format("Lista de servidores afiliados: ~n~p~n~n~n",[Lista]),
 
 	receive
 		%Agrego servidor a la lista de registrados
@@ -91,9 +94,7 @@ main(Lista) ->
 
 		{multicasts_cliente,Msg,NL} ->
 			NewLista = Lista,
-			io:format("Envio~n"),
-			enviar_multicast_tuplas(Msg,NL),
-			io:format("Listo~n")
+			enviar_multicast_tuplas(Msg,NL)
 
 	end,
 	multicast:main(NewLista).

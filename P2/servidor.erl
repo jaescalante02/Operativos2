@@ -2,9 +2,7 @@
 -export([main/1,cambiar_contenido/4,timest/0,promediacion/5]).
 
 %Funcion que revisa si un proceso esta vivo mediante un Multicast en un Nodo
-revisar(Mcast,Nodo)->
-%	Resp = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,whereis,[servidor]]),
-%	Resp2 = rpc:call(Mcast,multicast,hacer_rpc,[Nodo,erlang,is_process_alive,[Resp]])==true,
+revisar(_,Nodo)->
 	Resp = ok,
 	Resp2 = net_adm:ping(Nodo)==pong,
 	{Resp,Resp2}.
@@ -35,6 +33,9 @@ promediacion(Mcast,[[_,Nodo,_,_]|Resto],Segundos,Vivos,TiempoPromediando) ->
 			promediacion(Mcast,Resto,Segundos,Vivos,TiempoPromediando+Tarda)
 	end.
 
+
+%Funcion que dado una lista de archivos cuyo nombres son nombre_timestamp
+%Devuelve una lista de el nombre separado del timestamp
 parsear_archivos([])->
 	[];
 
@@ -44,6 +45,9 @@ parsear_archivos([Archivo|Resto])->
 	Version = string:substr(Archivo,Index+1),
 	[{Nombre,Version}] ++ parsear_archivos(Resto).
 
+
+%Funcion encargada de cargar todo contenido que posea un directorio 
+%Cuando el servidor se levanta
 procesar_directorios(_,[])->
 	[];
 procesar_directorios(Nodo,[Usuario|Resto])->
@@ -51,6 +55,7 @@ procesar_directorios(Nodo,[Usuario|Resto])->
 	[[Usuario]++parsear_archivos(Archivos)] ++ procesar_directorios(Nodo,Resto).
 
 
+%Dado un nodo y un contenido cambia el contenido de ese nodo
 cambiar_contenido(_,_,_,[])->
 	[];
 cambiar_contenido(Proc,Nodo,NewCont,[Head|Tail])->
@@ -63,6 +68,8 @@ cambiar_contenido(Proc,Nodo,NewCont,[Head|Tail])->
 			
 	end.
 
+
+%Dado una lista de nodos, se encarga de mandar el mensaje de forma FIFO
 enviar_msg_fifo(Lista,_,0,_) ->
 	Lista;
 
@@ -71,6 +78,7 @@ enviar_msg_fifo([Head|Resto],Msg,K,Mcast) ->
 	{mcast,Mcast} ! {unicasts,{Process,Node},Msg},
 	enviar_msg_fifo(Resto++[Head],Msg,K-1,Mcast).
 	
+%Funcion encargada de implementar el algoritmo de grandulon
 grandulon([],nil,_) ->
 	node();
 
@@ -79,7 +87,6 @@ grandulon([],Minimo,_) ->
 
 grandulon([[_,Nodo,Pid,_]|Resto],nil,Mcast) ->
 	{Resp,Resp2} = revisar(Mcast,Nodo),
-	%io:format("~p~n~n~n",[Resp2]),
 	if
 		Resp==undefined orelse Resp2/=true->
 			grandulon(Resto,nil,Mcast);
@@ -97,6 +104,9 @@ grandulon([[_,Nodo,Pid,_]|Resto],Compare,Mcast) ->
 			grandulon(Resto,Compare,Mcast)
 	end.
 
+
+%Funcion que dado un usuario y un archivo nuevo, se encarga de agregar
+%Ese archivo a las pertenencias del usuario
 agregar_al_cliente([],_,_,_)->
 	[];
 agregar_al_cliente([[Usuario|Resto1]|Resto2],Usuario,Archivo,Etiqueta)->
@@ -112,10 +122,12 @@ buscar_lista_usuario(_,[])->
 buscar_lista_usuario(Usuario,[[Usuario|Cont]|_])->
 	Cont;
 
-buscar_lista_usuario(Usuario,[X|Resto])->
+buscar_lista_usuario(Usuario,[_|Resto])->
 	buscar_lista_usuario(Usuario,Resto).
 
 
+%Dada una lista de archivos y el nombre de un archivo 
+%indica la version mas actual de ese archivo
 mejor_version(_,[],Res)->
 	Res;
 
@@ -151,48 +163,25 @@ nodo_con_version_mas_reciente(NombreCliente,Archivo,[[_,Nodo,_,Cont]|Resto],Mejo
 
 %La funcion Run Corre el servidor
 %Los parametros son
-%OldPrincipal que es el servidor principal, actual
+%Principal que es el servidor principal, actual
 %Mcast que es la direccion multicat de registro
 %Lista que es la Lista de los servidores con sus contenidos
 %Clientes que es la lista de clientes 
 %Contenido que es el contenido aparte de este servidor
+%Red que es la redundancia que existe en el sistema
 run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
-	io:format("Mi lista de servidores ahora es~n~p~n~n",[Lista]),
-	io:format("Y clientes: ~n~p~n~n",[Clientes]),
-	io:format("Y el servidor principal: ~n~p~n",[Principal]),
-
-	%Son respuestas a llamadas mediante rpc's al servidor principal
-	%Resp3 = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,whereis,[servidor]]),
-	%Resp4 = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,is_process_alive,[Resp3]])==true,
-%	{Resp3,Resp4} = revisar(Mcast,Principal),
-
- 
-%	if
-%		Resp3==undefined orelse Resp4/=true ->
-%			%Se cayo el servidor principal,
-%			%Hacer algoritmo del grandulon
-%			io:format("~n~n#####Cayo el principal#####~n~n"),
-%			NewS1 = grandulon(Lista,nil,Mcast),
-%			NewS1 = Principal,
-%			io:format("Ahora principal~n:~p~n",[NewS1]),
-%			run(NewS1, Mcast,Lista,Clientes,Contenido,Red);
-%		true ->
-%			ok
-%	end,
-	io:format("Y principal2: ~n~p~n",[Principal]),
-%	io:format("Y contenido: ~n~p~n",[Contenido]),
+	io:format("~nMi lista de servidores ahora es~n~p~n~n",[Lista]),
+	io:format("~nY el servidor principal visto desde ~p es: ~n~p~n~n",[node(),Principal]),
 
 	receive
 		{dar_lista_cliente,From} ->
-			io:format("doy lista~n"),
 			From ! {recibir_lista_cliente,Clientes},
 			NewLista = Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido;
 
 		{dar_lista_servidor,From} ->
-			io:format("dar_lista~n"),
 			From ! {recibir_lista_servidor,Lista},
 			NewLista = Lista,
 			NewClientes = Clientes,
@@ -223,32 +212,17 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
 
 		revisar_principal->
-			io:format("Reviso principal"),
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido,
-		%	io:format("Principal3~n"),
-			%%Arreglar esto y poner del lado del multicast
-	%		Resp = rpc:call(Principal,erlang,whereis,[servidor]),
-		%	io:format("Principal44~n"),
-			%Resp=ctm,
-			%Resp2=true,
-	%		Resp2 = (rpc:call(Principal,erlang,is_process_alive,[Resp])==true),
-			%Resp = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,whereis,[servidor]]),
-			%Resp2 = rpc:call(Mcast,multicast,hacer_rpc,[Principal,erlang,is_process_alive,[Resp]])==true,
 			{Resp,Resp2} = revisar(Mcast,Principal),
-
-
-			io:format("Principal4~n~p~n~p~n~n",[Resp,Resp2]),
 
 			if
 
 				Resp==undefined orelse Resp2/=true ->
 					%Se cayo el servidor principal,
 					%Hacer algoritmo del grandulon
-					io:format("~n~n#####Cayo el principal#####~n~n"),
 					NewS = grandulon(Lista,nil,Mcast),
-					io:format("Ahora principal~n:~p~n",[NewS]),
 					{mcast,Mcast} ! {multicasts_cliente, {new_principal,NewS},Clientes},
 					{mcast,Mcast} ! {multicasts, {new_princ,NewS}},
 
@@ -277,7 +251,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 		%para que  el servidor actualice a cada cliente con quien es el
 		%Principal
 		{agregar_cliente,Nombre,ClienteNuevo} ->
-			io:format("####~n####~n####~nAgrego cliente~n~n"),
 			NewLista=Lista,
 			NewClientes = Clientes ++ [ClienteNuevo],
 			Servi = atom_to_list(node()),
@@ -293,7 +266,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 					NewContenido = Contenido
 			end,
 			filelib:ensure_dir(Servi++"/"++Nombre),
-			{ok,ListaActual} = file:list_dir(Servi),
 			
 			%Creo la carpeta correspondiente al repo del cliente si es 
 			%necesario
@@ -305,7 +277,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 		%senial) manda un broadcast mediante el multicast
 
 		{multicast_cliente,Client} ->
-			io:format("Multicast del cliente nuevo"),
 			{mcast,Mcast} ! {multicast,{agregar_cliente,Client}},
 			NewLista=Lista,
 			NewClientes = Clientes,
@@ -313,7 +284,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
 		%Aqui se busca la mejor version de un archivo
 		{peticion_buscar_archivo,NombreCliente,NodoCliente,Archivo} ->
-			io:format("Hora de buscar########~n"),
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido,
@@ -322,19 +292,13 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
 
 		{buscar_archivo,NombreCliente,NodoCliente,Archivo}->
-			io:format("Busco version mas reciente archivo~n"),
 			{Version,Busqueda} = nodo_con_version_mas_reciente(NombreCliente,Archivo,Lista,nil,nil),
-			io:format("Version=~p~nNodo=~p~n~n",[Version,Busqueda]),
 			if
 				%Envio el mensaje al cliente si esta este nodo tiene la
 				%mejor version
 				node()==Busqueda->
-					io:format("Es el archivo~n"),
-					io:format("~p~n~n",[ atom_to_list(node())++"/"++NombreCliente++"/"++Archivo]),
 					{ok,File} = file:read_file(atom_to_list(node())++"/"++NombreCliente++"/"++Archivo++"_"++Version),
-					io:format("No lo es~n"),
 					EnviarCont = unicode:characters_to_list(File),
-					io:format("Tampoco lo es~n"),
 					{mcast,Mcast} ! {unicasts,{servidor,Principal},{enviar_update,NodoCliente,EnviarCont}};
 
 				%No existe tal archivo en ningun repo
@@ -346,19 +310,15 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 				true->
 					ok
 			end,
-			io:format("Salgo~n~n"),
 			NewClientes = Clientes,
 			NewContenido = Contenido,
 			NewLista = Lista
 			;
 
 		{enviar_update,NodoCliente,Conte}->
-			io:format("Update~n~p~n~p~n",[NodoCliente,Conte]),
-			Pid = element(1,NodoCliente),
 			Nod = element(2,NodoCliente),
 			
 			{cliente,Nod} ! {update,Conte},
-			io:format("Peo~n"),
 			NewClientes = Clientes,
 			NewContenido = Contenido,
 			NewLista = Lista
@@ -366,7 +326,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 
 
 		{no_existe,NodoCliente}->
-			io:format("No existe~n"),
 			Nod = element(2,NodoCliente),
 			{cliente,Nod} ! no_existe,
 			NewClientes = Clientes,
@@ -374,7 +333,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewLista = Lista
 		;
 		{peticion_agregar_archivo,Cliente,{Arch,Cont}} ->
-			io:format("Estoy aqui~n~n@!#!@#!~n"),
 			Tiempo = integer_to_list(promediacion(Mcast,Lista,0,0,0)),
 			NewLista = enviar_msg_fifo(Lista,{add_a,{Cliente,Arch,Cont,Tiempo}},Red+1,Mcast),
 			NewClientes = Clientes,
@@ -382,7 +340,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			;
 	
 		{agreguen_servidor,S} ->
-			io:format("Agrego servidor"),
 			NewClientes = Clientes,
 			NewContenido = Contenido,
 			NewLista = Lista++[S],
@@ -394,14 +351,11 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 		%Aqui se agregan los archivos realmente, la guardia que esta antes de
 		%la anterior a esta solo recibe la peticion del cliente
 		{add_a,Tupla} ->
-			io:format("Imprime nojoda!~n~n"),
 			Cliente=element(1,Tupla),
 			Arch2 = element(2,Tupla),
 			Arch = string:substr(Arch2,string:rstr(Arch2,"/")+1),
 			Cont = element(3,Tupla),
 			Tiempo = element(4,Tupla),
-			io:format("$$$$$$$$$$$$$$$$$$$add~n"),
-			io:format("Contenido=~p~nCliente=~p~n",[Cont,Cliente]),
 			Servi = atom_to_list(node()),
 			filelib:ensure_dir(Servi++"/"++Cliente++"/"++Arch++"_"++Tiempo),
 			file:write_file(Servi++"/"++Cliente++"/"++Arch++"_"++Tiempo,Cont),
@@ -415,7 +369,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			;
 		
 		{cambio_contenido,{Proc,Nodo,NuevoCont}} ->
-			io:format("Cambiocont~n"),
 			NewClientes = Clientes,
 			NewContenido = Contenido,
 			NewLista = cambiar_contenido(Proc,Nodo,NuevoCont,Lista);
@@ -425,8 +378,7 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 			NewContenido = Contenido,
 			NewLista = multicast:fuera_muertos(Lista,ListaM)
 		;	
-		Otro->
-			io:format("Cayooooo aquiiiii ~n~p~n",[Otro]),
+		_->
 			NewLista=Lista,
 			NewClientes = Clientes,
 			NewContenido = Contenido
@@ -440,27 +392,6 @@ run(Principal, Mcast,Lista,Clientes,Contenido,Red) ->
 	end,
 	run(Principal,Mcast,NewLista,NewClientes,NewContenido,Red).
 
-
-recibir_clientes()->
-	receive
-		{recibir_lista_cliente,Clientes} ->
-			Clientes;
-		_->
-			recibir_clientes()
-	after 2000 ->
-			[]
-	end.
-
-recibir_servidores()->
-	receive
-		{recibir_lista_servidor,Servidores} ->
-			Servidores;
-		_->
-			recibir_servidores()
-	after 2000 ->
-			[]
-	end.		
-	
 
 
 main([Mcast,Principal,K|_]) -> 
